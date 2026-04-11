@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>GPS Test</title>
+</head>
+
+<body style="background:black; color:white; font-family:Arial; text-align:center; padding-top:50px;">
+
+<h1>GPS TEST</h1>
+
+<div id="status">Waiting for GPS...</div>
+
+<div id="coords" style="margin-top:20px; font-size:22px;"></div>
+
+<div id="accuracy" style="margin-top:10px;"></div>
+
+<script>
+
+const statusEl = document.getElementById("status");
+const coordsEl = document.getElementById("coords");
+const accEl = document.getElementById("accuracy");
+
+if (!navigator.geolocation) {
+  statusEl.innerText = "Geolocation NOT supported";
+} else {
+
+  statusEl.innerText = "Starting GPS...";
+
+  navigator.geolocation.watchPosition(
+
+    function(pos) {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const acc = pos.coords.accuracy;
+
+      statusEl.innerText = "GPS WORKING ✅";
+
+      coordsEl.innerHTML =
+        "LAT: " + lat.toFixed(6) + "<br>" +
+        "LON: " + lon.toFixed(6);
+
+      accEl.innerText = "Accuracy: " + acc + " m";
+    },
+
+    function(err) {
+      if(err.code === 1){
+        statusEl.innerText = "ERROR: Permission denied";
+      }
+      else if(err.code === 2){
+        statusEl.innerText = "ERROR: Position unavailable";
+      }
+      else if(err.code === 3){
+        statusEl.innerText = "Waiting for GPS signal...";
+      }
+      else{
+        statusEl.innerText = "ERROR: " + err.message;
+      }
+    },
+
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0
+      // timeout intentionally removed 🔥
+    }
+
+  );
+
+}
+
+</script>
+
+</body>
+</html>
