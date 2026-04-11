@@ -1,71 +1,234 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<title>GPS Test</title>
-</head>
+<body style="margin:0; background:black; font-family:Arial, Helvetica, sans-serif;">
 
-<body style="background:black; color:white; font-family:Arial; text-align:center; padding-top:50px;">
+<div id="screen" style="height:100vh; display:flex; flex-direction:column;"></div>
 
-<h1>GPS TEST</h1>
+<!-- 🔥 GPS DEBUG -->
+<div id="gpsStatus" style="
+  position:fixed;
+  bottom:10px;
+  left:10px;
+  color:white;
+  font-size:12px;
+  opacity:0.7;
+">
+GPS: starting...
+</div>
 
-<div id="status">Waiting for GPS...</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-<div id="coords" style="margin-top:20px; font-size:22px;"></div>
+const app = initializeApp({
+  apiKey: "AIza...",
+  databaseURL: "https://gtcc-control-default-rtdb.firebaseio.com/",
+  projectId: "gtcc-control",
+});
 
-<div id="accuracy" style="margin-top:10px;"></div>
+const db = getDatabase(app);
 
-<script>
+let zones = {};
+let allGreen = false;
+let fcy = false;
+let fcy_sc = false;
+let red = false;
 
-const statusEl = document.getElementById("status");
-const coordsEl = document.getElementById("coords");
-const accEl = document.getElementById("accuracy");
+onValue(ref(db,'zones'), s=>{ zones=s.val()||{}; render(); });
+onValue(ref(db,'allGreen'), s=>{ allGreen=s.val()===true; render(); });
+onValue(ref(db,'fcy'), s=>{ fcy=s.val()===true; render(); });
+onValue(ref(db,'fcy_sc'), s=>{ fcy_sc=s.val()===true; render(); });
+onValue(ref(db,'red'), s=>{ red=s.val()===true; render(); });
 
-if (!navigator.geolocation) {
-  statusEl.innerText = "Geolocation NOT supported";
-} else {
+function render(){
+  const screen = document.getElementById("screen");
+  screen.innerHTML = "";
 
-  statusEl.innerText = "Starting GPS...";
+  if(red){
+    const div = base();
+    div.style.background="red";
+    div.style.border="10px solid black";
+    return;
+  }
+
+  if(fcy_sc){
+    addDoubleSC("FCY");
+    return;
+  }
+
+  if(fcy){
+    addDouble("FCY");
+    return;
+  }
+
+  const entries = Object.entries(zones)
+    .sort((a,b)=> parseInt(a[0].slice(1)) - parseInt(b[0].slice(1)))
+    .reverse();
+
+  entries.forEach(([turn,color])=>{
+
+    if(color==="DOUBLE"){
+      addDouble(turn);
+    }
+    else if(color==="DOUBLE_SC"){
+      addDoubleSC(turn);
+    }
+    else if(color==="YELLOW"){
+      addSingle(turn);
+    }
+    else if(color==="GREEN"){
+      addGreen(turn);
+    }
+
+  });
+
+  if(allGreen){
+    const div = base();
+    div.style.background="green";
+  }
+}
+
+// 🟢 GREEN
+function addGreen(text){
+  const div = base();
+  div.style.background="green";
+  div.style.color="black";
+  div.innerText=text;
+}
+
+// 🟡 SINGLE
+function addSingle(text){
+  const div = base();
+  div.style.background="gold";
+  div.style.color="black";
+  div.innerText=text;
+}
+
+// 🟡🟡 DOUBLE
+function addDouble(text){
+  const div = base();
+  div.style.display="flex";
+
+  const b1 = box();
+  const b2 = box();
+  b2.style.borderLeft="12px solid black";
+
+  div.appendChild(b1);
+  div.appendChild(b2);
+
+  label(div,text);
+}
+
+// 🟡🟡 + SC
+function addDoubleSC(text){
+  const div = base();
+  div.style.display="flex";
+
+  const b1 = box();
+  const b2 = box();
+  b2.style.borderLeft="12px solid black";
+
+  labelBox(b1, text);
+  labelBox(b2, "SC");
+
+  div.appendChild(b1);
+  div.appendChild(b2);
+}
+
+// 🔧 BASE
+function base(){
+  const div = document.createElement("div");
+  div.style.flex="1";
+  div.style.margin="10px";
+  div.style.display="flex";
+  div.style.alignItems="center";
+  div.style.justifyContent="center";
+  div.style.fontSize="8vh";
+  div.style.fontWeight="bold";
+  div.style.position="relative";
+  document.getElementById("screen").appendChild(div);
+  return div;
+}
+
+// 🟨 BOX
+function box(){
+  const b=document.createElement("div");
+  b.style.flex="1";
+  b.style.height="100%";
+  b.style.background="gold";
+  b.style.display="flex";
+  b.style.alignItems="center";
+  b.style.justifyContent="center";
+  b.style.color="black";
+  b.style.fontWeight="bold";
+  b.style.fontSize="8vh";
+  return b;
+}
+
+// LABEL CENTER
+function label(parent,text){
+  const l=document.createElement("div");
+  l.innerText=text;
+  l.style.position="absolute";
+  l.style.color="black";
+  l.style.fontWeight="bold";
+  l.style.fontSize="8vh";
+  parent.appendChild(l);
+}
+
+// LABEL BOX
+function labelBox(parent,text){
+  parent.innerText = text;
+}
+
+//////////////////////////////////////////////////////////
+// 🔥 GPS PART (ახალი)
+//////////////////////////////////////////////////////////
+
+let gpsLat = null;
+let gpsLon = null;
+
+const gpsEl = document.getElementById("gpsStatus");
+
+if (navigator.geolocation) {
 
   navigator.geolocation.watchPosition(
 
     function(pos) {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      const acc = pos.coords.accuracy;
 
-      statusEl.innerText = "GPS WORKING ✅";
+      gpsLat = pos.coords.latitude;
+      gpsLon = pos.coords.longitude;
 
-      coordsEl.innerHTML =
-        "LAT: " + lat.toFixed(6) + "<br>" +
-        "LON: " + lon.toFixed(6);
+      gpsEl.innerHTML =
+        "GPS ✅<br>" +
+        gpsLat.toFixed(5) + "<br>" +
+        gpsLon.toFixed(5);
 
-      accEl.innerText = "Accuracy: " + acc + " m";
     },
 
     function(err) {
+
       if(err.code === 1){
-        statusEl.innerText = "ERROR: Permission denied";
+        gpsEl.innerText = "GPS ❌ Permission";
       }
       else if(err.code === 2){
-        statusEl.innerText = "ERROR: Position unavailable";
-      }
-      else if(err.code === 3){
-        statusEl.innerText = "Waiting for GPS signal...";
+        gpsEl.innerText = "GPS ❌ Unavailable";
       }
       else{
-        statusEl.innerText = "ERROR: " + err.message;
+        gpsEl.innerText = "GPS ⏳ Waiting...";
       }
+
     },
 
     {
       enableHighAccuracy: true,
       maximumAge: 0
-      // timeout intentionally removed 🔥
     }
 
   );
 
+} else {
+  gpsEl.innerText = "No GPS";
 }
 
 </script>
