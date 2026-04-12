@@ -107,16 +107,9 @@ function render(){
   if(fcy_sc){ addDoubleSC("FCY"); return;}
   if(fcy){ addDouble("FCY"); return;}
 
-  // 🔥 GPS mode
+  // 🔥 მხოლოდ როცა ზონაში ხარ
   if(displayZone && zones[displayZone]){
     drawZone(displayZone);
-    return;
-  }
-
-  // 🔥 TEST MODE (თბილისში)
-  const active = Object.keys(zones).filter(k=>zones[k]);
-  if(active.length>0){
-    drawZone(active[0]); // პირველი აქტიური
     return;
   }
 
@@ -155,10 +148,9 @@ if(navigator.geolocation){
 
     const z=detectStableZone(lat,lon);
 
-    if(z && z!==displayZone){
-      displayZone=z;
-      render();
-    }
+    // 🔥 პირდაპირ ვანახლებთ (null-საც)
+    displayZone = z;
+    render();
 
     gpsEl.innerHTML="GPS ✅<br>"+(displayZone||"-")+"<br>"+lat.toFixed(5)+"<br>"+lon.toFixed(5);
 
