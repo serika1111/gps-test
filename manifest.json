@@ -1,11 +1,10 @@
 {
-  "name": "GTCC Driver",
-  "short_name": "GTCC",
+  "name": "RaceSignal",
+  "short_name": "RaceSignal",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
-  "orientation": "landscape",
   "icons": [
     {
       "src": "icon-192.png",
