@@ -1,4 +1,4 @@
-const CACHE_NAME = "driver-v1";
+const CACHE_NAME = "driver-v2";
 
 // install
 self.addEventListener('install', e => {
