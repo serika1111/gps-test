@@ -45,7 +45,21 @@ GPS: starting...
 
 // 🔥 SERVICE WORKER
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+  navigator.serviceWorker.register('sw.js').then(reg => {
+
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed') {
+          if (navigator.serviceWorker.controller) {
+            window.location.reload();
+          }
+        }
+      });
+    });
+
+  });
 }
 
 // 🔥 WAKE LOCK
@@ -164,25 +178,63 @@ let displayZone=null;
 
 function render(){
   const screen=document.getElementById("screen");
-  screen.innerHTML="";
 
-  if(red){ const d=base(); d.style.background="red"; return;}
-  if(finish){ const d=base(); d.innerText="🏁"; return;}
+ screen.innerHTML="";
+
+if(red){
+  const d = base();
+  d.style.background="red";
+  return;
+}
+
+// 🔥 FINISH - GPS
+if(finish && mode === "GPS"){
+  if(displayZone === "FN"){
+    const d = base();
+    d.style.background = "white";
+    d.style.color = "black";
+    d.innerText = "🏁 FINISH";
+    return;
+  }
+}
+
+// 🔥 NEW: FINISH + FCY (split view)
+if(finish && (fcy || fcy_sc)){
+  const d1 = base();
+  d1.style.background = "white";
+  d1.style.color = "black";
+  d1.innerText = "🏁 FINISH";
+
+  const d2 = base();
+
   if(fcy_sc){
+    d2.style.background = "white";
+    d2.style.color = "black";
+    d2.innerText = "SAFETY CAR";
+  } else {
+    d2.style.background = "gold";
+    d2.style.color = "black";
+    d2.innerText = "FCY";
+  }
+
+  return;
+}
+
+if(fcy_sc){
   const d = base();
   d.style.background = "white";
   d.style.color = "black";
   d.innerText = "SAFETY CAR";
   return;
 }
-  if(fcy){
+
+if(fcy){
   const d = base();
   d.style.background = "gold";
   d.style.color = "black";
   d.innerText = "FCY";
   return;
 }
-
 // 🔵 MANUAL MODE
 if(mode === "MANUAL"){
 
@@ -200,6 +252,10 @@ if(mode === "MANUAL"){
     if(zones[z]) active.push(z);
   }
 
+if(finish && !active.includes("FN")){
+  active.push("FN");
+}
+
   // 🔥 ALL GREEN როგორც ელემენტი (ქვედა ფენა)
   if(allGreen){
     active.unshift("ALL_GREEN"); // ქვემოთ რომ დარჩეს
@@ -208,17 +264,26 @@ if(mode === "MANUAL"){
   // ახალი ზემოთ
   active.reverse();
 
-  active.forEach(z => {
-    if(z === "ALL_GREEN"){
-      const d = base();
-      d.style.background = "green";
-    } else {
-      drawZone(z);
-    }
-  });
+active.forEach(z => {
+  if(z === "ALL_GREEN"){
+    const d = base();
+    d.style.background = "green";
 
-  return;
+  } else if(z === "FN" && finish){
+    const d = base();
+    d.style.background = "white";
+    d.style.color = "black";
+    d.innerText = "🏁 FINISH";
+
+  } else {
+    drawZone(z);
+  }
+});
+
+return; // 🔥 ეს კრიტიკულია
+
 }
+
 // 🟢 GPS MODE
 if(displayZone && zones[displayZone]){
   drawZone(displayZone);
