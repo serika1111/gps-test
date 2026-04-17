@@ -26,6 +26,7 @@
   font-family:monospace;
 ">
   <span id="hudText">GPS...</span>
+<span id="versionText" style="margin-left:auto; padding-right:10px;">v?</span>
 </div>
 
 <div id="screen" style="height:100vh; display:flex; flex-direction:column;"></div>
@@ -40,6 +41,8 @@
 ">
 GPS: starting...
 </div>
+
+<script src="version.js"></script>
 
 <script type="module">
 
@@ -369,6 +372,8 @@ function box(){
 
 const gpsEl = document.getElementById("gpsStatus");
 const hudText = document.getElementById("hudText");
+const versionText = document.getElementById("versionText");
+versionText.innerText = APP_VERSION;
 
 let lastTime = null;
 

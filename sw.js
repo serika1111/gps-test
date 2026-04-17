@@ -1,11 +1,13 @@
-const CACHE_NAME = "driver-v3";
+importScripts('version.js');
+
+const CACHE_NAME = APP_VERSION;
 
 // install
 self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
-// activate (წაშლის ძველ cache-ებს)
+// activate
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -21,7 +23,7 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// fetch (online first, fallback cache)
+// fetch
 self.addEventListener('fetch', e => {
   e.respondWith(
     fetch(e.request)
@@ -34,4 +36,11 @@ self.addEventListener('fetch', e => {
       })
       .catch(() => caches.match(e.request))
   );
+});
+
+// 🔥 ეს უნდა იყოს ცალკე!
+self.addEventListener('message', (event) => {
+  if (event.data?.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
