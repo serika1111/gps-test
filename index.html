@@ -45,19 +45,18 @@ GPS: starting...
 
 // 🔥 SERVICE WORKER
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(reg => {
+  navigator.serviceWorker.register('sw.js');
+}
 
-    reg.onupdatefound = () => {
-      const newWorker = reg.installing;
+// 🔥 WAKE LOCK
+let wakeLock = null;
 
-      newWorker.onstatechange = () => {
-        if (newWorker.state === 'installed') {
-          window.location.reload(); // 🔥 აი ესაა მთავარი
-        }
-      };
-    };
-
-  });
+async function keepScreenOn(){
+  try{
+    wakeLock = await navigator.wakeLock.request('screen');
+  }catch(e){
+    console.log("Wake lock failed", e);
+  }
 }
 
 keepScreenOn();
