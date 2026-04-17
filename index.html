@@ -71,7 +71,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const app = initializeApp({
-  apiKey: "AIza...",
+  apiKey: "AIzaSyB4OVjTmL5vol7tleOqgYKSqDPtf7gjQu0",
   databaseURL: "https://gtcc-control-default-rtdb.firebaseio.com/",
   projectId: "gtcc-control",
 });
@@ -84,6 +84,7 @@ let fcy = false;
 let fcy_sc = false;
 let red = false;
 let finish = false;
+let mode = "GPS";
 
 onValue(ref(db,'zones'), s=>{
   const data = s.val() || {};
@@ -99,6 +100,10 @@ onValue(ref(db,'fcy'), s=>{ fcy = s.val()?.value === true; render(); });
 onValue(ref(db,'fcy_sc'), s=>{ fcy_sc = s.val()?.value === true; render(); });
 onValue(ref(db,'red'), s=>{ red = s.val()?.value === true; render(); });
 onValue(ref(db,'finish'), s=>{ finish = s.val()?.value === true; render(); });
+onValue(ref(db,'mode'), s=>{
+  mode = s.val()?.value || "GPS";
+  render();
+});
 
 //////////////////////////////////////////////////////////
 // ZONES (GPS)
@@ -163,13 +168,60 @@ function render(){
 
   if(red){ const d=base(); d.style.background="red"; return;}
   if(finish){ const d=base(); d.innerText="🏁"; return;}
-  if(fcy_sc){ addDoubleSC("FCY"); return;}
-  if(fcy){ addDouble("FCY"); return;}
+  if(fcy_sc){
+  const d = base();
+  d.style.background = "white";
+  d.style.color = "black";
+  d.innerText = "SAFETY CAR";
+  return;
+}
+  if(fcy){
+  const d = base();
+  d.style.background = "gold";
+  d.style.color = "black";
+  d.innerText = "FCY";
+  return;
+}
 
-  if(displayZone && zones[displayZone]){
-    drawZone(displayZone);
+  // 🔵 MANUAL MODE
+// 🔵 MANUAL MODE
+if(mode === "MANUAL"){
+
+  // 🔥 აი ეს დაამატე აქ
+  if(allGreen){
+    const d = base();
+    d.style.background = "green";
     return;
   }
+
+  const order = [
+    "ST",
+    "MP1","MP2","MP3","MP4","MP5","MP6","MP7",
+    "MP8","MP9","MP10","MP11","MP12","MP13",
+    "FN"
+  ];
+
+  let active = [];
+
+  for(const z of order){
+    if(zones[z]) active.push(z);
+  }
+
+  active.reverse();
+
+  const h = 100 / active.length;
+
+  active.forEach(z => {
+  drawZone(z);
+});
+
+  return;
+}
+// 🟢 GPS MODE
+if(displayZone && zones[displayZone]){
+  drawZone(displayZone);
+  return;
+}
 
   if(allGreen){ const d=base(); d.style.background="green"; }
 }
@@ -184,11 +236,65 @@ function drawZone(z){
 
 function addGreen(t){const d=base();d.style.background="green";d.innerText=t;}
 function addSingle(t){const d=base();d.style.background="gold";d.innerText=t;}
-function addDouble(t){const d=base();d.style.display="flex";const b1=box(),b2=box();d.appendChild(b1);d.appendChild(b2);}
-function addDoubleSC(t){const d=base();d.style.display="flex";const b1=box(),b2=box();b1.innerText=t;b2.innerText="SC";d.appendChild(b1);d.appendChild(b2);}
 
-function base(){const d=document.createElement("div");d.style.flex="1";d.style.margin="10px";d.style.display="flex";d.style.alignItems="center";d.style.justifyContent="center";d.style.fontSize="8vh";document.getElementById("screen").appendChild(d);return d;}
-function box(){const b=document.createElement("div");b.style.flex="1";b.style.background="gold";b.style.display="flex";b.style.alignItems="center";b.style.justifyContent="center";return b;}
+function addDouble(t){
+  const d = base();
+
+  d.style.background = "gold";
+  d.style.position = "relative";
+
+  d.innerText = t;
+
+  const line = document.createElement("div");
+  line.style.position = "absolute";
+  line.style.top = "0";
+  line.style.bottom = "0";
+  line.style.left = "50%";
+  line.style.width = "20px";
+  line.style.background = "black";
+
+  d.appendChild(line);
+}
+
+function addDoubleSC(t){
+  const d = base();
+
+  d.style.background = "white";
+  d.style.color = "black";
+  d.style.position = "relative";
+
+  d.innerText = t + " SC";
+}
+
+function base(){
+  const d=document.createElement("div");
+  d.style.flex="1";
+  d.style.margin="10px";
+  d.style.display="flex";
+
+  d.style.alignItems="center";
+  d.style.justifyContent="flex-start"; // 👈 აქ
+  d.style.paddingLeft = "40px";        // 👈 ესეც
+
+  d.style.fontSize = "clamp(40px, 12vw, 180px)";
+    d.style.fontWeight = "bold";
+    d.style.letterSpacing = "0.1em"; // 🔥 განიერი ასოები
+  document.getElementById("screen").appendChild(d);
+  return d;
+}
+
+function box(){
+  const b=document.createElement("div");
+  b.style.flex="1";
+  b.style.background="gold";
+  b.style.display="flex";
+  b.style.alignItems="center";
+  b.style.justifyContent="center";
+  b.style.color="black";
+  b.style.fontWeight="bold";
+  b.style.fontSize="6vh";
+  return b;
+}
 
 //////////////////////////////////////////////////////////
 // GPS
