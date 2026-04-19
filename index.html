@@ -430,6 +430,22 @@ if(navigator.geolocation){
   );
 }
 
+  // 🔥 AUTO UPDATE CHECK (არაფერი არ წაშალო, უბრალოდ დაამატე)
+function pingVersion() {
+  fetch('./version.js', { cache: 'no-store' })
+    .catch(() => {});
+}
+
+// გახსნაზე
+window.addEventListener('load', pingVersion);
+
+// აპში დაბრუნებაზე
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    pingVersion();
+  }
+});
+  
 </script>
 </body>
 </html>
