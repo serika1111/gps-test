@@ -1,430 +1,192 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#000000">
+  <style>
+    body { margin: 0; }
+
+    #map {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    #map img {
+      width: 100%;
+      display: block;
+    }
+
+    #dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: red;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
 </head>
+<body>
 
-<body style="display:flex; flex-direction:column; height:100vh; margin:0; background:black; font-family:Arial, Helvetica, sans-serif;">
-
-<!-- 🔥 HUD -->
-<div id="hud" style="
-  position:relative;
-  top:0;
-  left:0;
-  width:100%;
-  height:60px;
-  padding-top:env(safe-area-inset-top);
-  color:white;
-  font-size:16px;
-    font-weight:bold;
-    background:rgba(0,0,0,0.85);
-  display:flex;
-  align-items:center;
-  padding-left:8px;
-  z-index:999;
-  font-family:monospace;
-">
-  <span id="hudText">GPS...</span>
-<span id="versionText" style="margin-left:auto; padding-right:10px;">v?</span>
+<div id="map">
+  <img src="lilo.jpg" id="mapImg">
+  <div id="dot"></div>
 </div>
 
-<div id="screen" style="flex:1; display:flex; flex-direction:column;"></div>
+<script>
 
-<div id="gpsStatus" style="
-  position:fixed;
-  bottom:10px;
-  left:10px;
-  color:white;
-  font-size:12px;
-  opacity:0.7;
-">
-GPS: starting...
-</div>
+// 🎯 mapping (ჯერ დროებითი, მერე შევცვლით affine-ით)
 
-<script src="version.js"></script>
+function gpsToXY(lat, lon) {
 
-<script type="module">
+  const pts = [
+    { lat: 41.69296816050202, lon: 45.01076111307317, x: 58,  y: 561 }, // p1
+    { lat: 41.69505199095477, lon: 45.01132406746814, x: 171, y: 3   }, // p2
+    { lat: 41.694823258180094, lon: 45.01420452100431, x: 747, y: 62  }, // p3
+    { lat: 41.69293064770812, lon: 45.01423910621728, x: 754, y: 570 }  // p4
+  ];
 
-// 🔥 SERVICE WORKER
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(reg => {
+  function solveHomography(pts) {
+    const A = [];
+    const B = [];
 
-    reg.addEventListener('updatefound', () => {
-      const newWorker = reg.installing;
+    pts.forEach(p => {
+      const X = p.lon;
+      const Y = p.lat;
 
-      newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed') {
-          if (navigator.serviceWorker.controller) {
-            window.location.reload();
-          }
-        }
-      });
+      A.push([X, Y, 1, 0, 0, 0, -p.x*X, -p.x*Y]);
+      B.push(p.x);
+
+      A.push([0, 0, 0, X, Y, 1, -p.y*X, -p.y*Y]);
+      B.push(p.y);
     });
 
+    function solve(A, B) {
+      const n = B.length;
+
+      for (let i = 0; i < n; i++) {
+        let maxRow = i;
+        for (let k = i + 1; k < n; k++) {
+          if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) {
+            maxRow = k;
+          }
+        }
+
+        [A[i], A[maxRow]] = [A[maxRow], A[i]];
+        [B[i], B[maxRow]] = [B[maxRow], B[i]];
+
+        let pivot = A[i][i];
+        for (let j = i; j < n; j++) A[i][j] /= pivot;
+        B[i] /= pivot;
+
+        for (let k = 0; k < n; k++) {
+          if (k !== i) {
+            let factor = A[k][i];
+            for (let j = i; j < n; j++) {
+              A[k][j] -= factor * A[i][j];
+            }
+            B[k] -= factor * B[i];
+          }
+        }
+      }
+
+      return B;
+    }
+
+    const h = solve(A, B);
+
+    return [
+      [h[0], h[1], h[2]],
+      [h[3], h[4], h[5]],
+      [h[6], h[7], 1]
+    ];
+  }
+
+  const H = solveHomography(pts);
+
+  const X = lon;
+  const Y = lat;
+
+  const denom = H[2][0]*X + H[2][1]*Y + H[2][2];
+
+  return {
+    x: (H[0][0]*X + H[0][1]*Y + H[0][2]) / denom,
+    y: (H[1][0]*X + H[1][1]*Y + H[1][2]) / denom
+  };
+}
+
+const testPoints = [
+  { lat: 41.69296610309111, lon: 45.01075302134429, color: "blue" },   // p1
+  { lat: 41.69473208443149, lon: 45.0127916834419,  color: "green" },  // p2
+  { lat: 41.69406747348808, lon: 45.01376651147195, color: "yellow" }, // p3
+  { lat: 41.69293445423774, lon: 45.01302055610982, color: "purple" }  // p4
+];
+
+function drawTestPoints() {
+  testPoints.forEach((p) => {
+    const pos = gpsToXY(p.lat, p.lon);
+
+    const d = document.createElement("div");
+    d.style.position = "absolute";
+    d.style.width = "10px";
+    d.style.height = "10px";
+    d.style.borderRadius = "50%";
+    d.style.background = p.color;
+    d.style.transform = "translate(-50%, -50%)";
+
+    d.style.left = pos.x + "px";
+    d.style.top  = pos.y + "px";
+
+    document.getElementById("map").appendChild(d);
   });
 }
 
-// 🔥 WAKE LOCK
-let wakeLock = null;
+// გაუშვი
+drawTestPoints();
 
-async function keepScreenOn(){
-  try{
-    wakeLock = await navigator.wakeLock.request('screen');
-  }catch(e){
-    console.log("Wake lock failed", e);
-  }
-}
+// UI
+const dot = document.getElementById("dot");
+const img = document.getElementById("mapImg");
+const map = document.getElementById("map");
 
-keepScreenOn();
+map.addEventListener("click", (e) => {
+  const rect = map.getBoundingClientRect();
 
-document.addEventListener("visibilitychange", () => {
-  if(document.visibilityState === "visible"){
-    keepScreenOn();
-  }
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  console.log("CLICK:", Math.round(x), Math.round(y));
 });
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+// 👇 ეს ჩასვი აქ
+document.body.insertAdjacentHTML(
+  "beforeend",
+  `<div id="debug" style="
+    position:fixed;
+    bottom:10px;
+    left:10px;
+    background:#000;
+    color:#0f0;
+    padding:5px;
+    font-size:12px;
+    z-index:9999;
+  "></div>`
+);
 
-const app = initializeApp({
-  apiKey: "AIzaSyB4OVjTmL5vol7tleOqgYKSqDPtf7gjQu0",
-  databaseURL: "https://gtcc-control-default-rtdb.firebaseio.com/",
-  projectId: "gtcc-control",
+navigator.geolocation.watchPosition((pos) => {
+  const lat = pos.coords.latitude;
+  const lon = pos.coords.longitude;
+
+  // ეკრანზე გაჩვენებს GPS-ს
+  document.getElementById("debug").innerText =
+    `LAT: ${lat}\nLON: ${lon}`;
+
+  const pixel = gpsToXY(lat, lon);
+
+  dot.style.left = pixel.x + "px";
+  dot.style.top  = pixel.y + "px";
 });
-
-const db = getDatabase(app);
-
-let zones = {};
-let allGreen = false;
-let fcy = false;
-let fcy_sc = false;
-let red = false;
-let finish = false;
-let mode = "GPS";
-
-onValue(ref(db,'zones'), s=>{
-  const data = s.val() || {};
-  zones = {};
-  for(const k in data){
-    zones[k] = data[k]?.value || null;
-  }
-  render();
-});
-
-onValue(ref(db,'allGreen'), s=>{ allGreen = s.val()?.value === true; render(); });
-onValue(ref(db,'fcy'), s=>{ fcy = s.val()?.value === true; render(); });
-onValue(ref(db,'fcy_sc'), s=>{ fcy_sc = s.val()?.value === true; render(); });
-onValue(ref(db,'red'), s=>{ red = s.val()?.value === true; render(); });
-onValue(ref(db,'finish'), s=>{ finish = s.val()?.value === true; render(); });
-onValue(ref(db,'mode'), s=>{
-  mode = s.val()?.value || "GPS";
-  render();
-});
-
-//////////////////////////////////////////////////////////
-// ZONES (GPS)
-//////////////////////////////////////////////////////////
-
-const zonePoints = {
-  ST:{lat:41.57091308602082,lon:44.94793302566386,r:40},
-  MP1:{lat:41.56960310576051,lon:44.94945195021675,r:40},
-  MP2:{lat:41.56745487005159,lon:44.95017758019732,r:40},
-  MP3:{lat:41.567915520531805,lon:44.951674556621725,r:40},
-  MP4:{lat:41.57087616656416,lon:44.94978120755724,r:40},
-  MP5:{lat:41.57282566600706,lon:44.94744031029538,r:40},
-  MP6:{lat:41.57373202413838,lon:44.94597061308161,r:40},
-  MP7:{lat:41.57291307616304,lon:44.949068571941154,r:40},
-  MP8:{lat:41.57044188874219,lon:44.950836844621975,r:40},
-  MP9:{lat:41.56976363871468,lon:44.952313397160815,r:40},
-  MP10:{lat:41.57184537364452,lon:44.95155492488257,r:40},
-  MP11:{lat:41.5748940696757,lon:44.94714040881128,r:40},
-  MP12:{lat:41.574097451105146,lon:44.945134502611126,r:40},
-  MP13:{lat:41.57275524975666,lon:44.945450399574916,r:40},
-  FN:{lat:41.57204929518776,lon:44.94632114118916,r:40}
-};
-
-function getDistance(lat1, lon1, lat2, lon2){
-  const R=6371000;
-  const dLat=(lat2-lat1)*Math.PI/180;
-  const dLon=(lon2-lon1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+
-    Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
-    Math.sin(dLon/2)**2;
-  return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-function detectZone(lat, lon){
-  for(const key in zonePoints){
-    const z=zonePoints[key];
-    const d=getDistance(lat,lon,z.lat,z.lon);
-    if(d<z.r) return key;
-  }
-  return null;
-}
-
-let currentZone=null,lastZone=null,stableCount=0;
-
-function detectStableZone(lat, lon){
-  const z=detectZone(lat,lon);
-  if(z===lastZone) stableCount++; else stableCount=0;
-  lastZone=z;
-  if(stableCount>=2) currentZone=z;
-  return currentZone;
-}
-
-let displayZone=null;
-
-//////////////////////////////////////////////////////////
-// RENDER
-//////////////////////////////////////////////////////////
-
-function render(){
-  const screen=document.getElementById("screen");
-
- screen.innerHTML="";
-
-if(red){
-  const d = base();
-  d.style.background="red";
-  return;
-}
-
-// 🔥 FINISH - GPS
-if(finish && mode === "GPS"){
-  if(displayZone === "FN"){
-    const d = base();
-    d.style.background = "white";
-    d.style.color = "black";
-    d.innerText = "🏁 FINISH";
-    return;
-  }
-}
-
-// 🔥 NEW: FINISH + FCY (split view)
-if(finish && (fcy || fcy_sc)){
-  const d1 = base();
-  d1.style.background = "white";
-  d1.style.color = "black";
-  d1.innerText = "🏁 FINISH";
-
-  const d2 = base();
-
-  if(fcy_sc){
-    d2.style.background = "white";
-    d2.style.color = "black";
-    d2.innerText = "SAFETY CAR";
-  } else {
-    d2.style.background = "gold";
-    d2.style.color = "black";
-    d2.innerText = "FCY";
-  }
-
-  return;
-}
-
-if(fcy_sc){
-  const d = base();
-  d.style.background = "white";
-  d.style.color = "black";
-  d.innerText = "SAFETY CAR";
-  return;
-}
-
-if(fcy){
-  const d = base();
-  d.style.background = "gold";
-  d.style.color = "black";
-  d.innerText = "FCY";
-  return;
-}
-// 🔵 MANUAL MODE
-if(mode === "MANUAL"){
-
-  const order = [
-    "ST",
-    "MP1","MP2","MP3","MP4","MP5","MP6","MP7",
-    "MP8","MP9","MP10","MP11","MP12","MP13",
-    "FN"
-  ];
-
-  let active = [];
-
-  // zones
-  for(const z of order){
-    if(zones[z]) active.push(z);
-  }
-
-if(finish && !active.includes("FN")){
-  active.push("FN");
-}
-
-  // 🔥 ALL GREEN როგორც ელემენტი (ქვედა ფენა)
-  if(allGreen){
-    active.unshift("ALL_GREEN"); // ქვემოთ რომ დარჩეს
-  }
-
-  // ახალი ზემოთ
-  active.reverse();
-
-active.forEach(z => {
-  if(z === "ALL_GREEN"){
-    const d = base();
-    d.style.background = "green";
-
-  } else if(z === "FN" && finish){
-    const d = base();
-    d.style.background = "white";
-    d.style.color = "black";
-    d.innerText = "🏁 FINISH";
-
-  } else {
-    drawZone(z);
-  }
-});
-
-return; // 🔥 ეს კრიტიკულია
-
-}
-
-// 🟢 GPS MODE
-if(displayZone && zones[displayZone]){
-  drawZone(displayZone);
-  return;
-}
-
-  if(allGreen){ const d=base(); d.style.background="green"; }
-}
-
-function drawZone(z){
-  const color=zones[z];
-  if(color==="DOUBLE") addDouble(z);
-  else if(color==="DOUBLE_SC") addDoubleSC(z);
-  else if(color==="YELLOW") addSingle(z);
-  else if(color==="GREEN") addGreen(z);
-}
-
-function addGreen(t){const d=base();d.style.background="green";d.innerText=t;}
-function addSingle(t){const d=base();d.style.background="gold";d.innerText=t;}
-
-function addDouble(t){
-  const d = base();
-
-  d.style.background = "gold";
-  d.style.position = "relative";
-
-  d.innerText = t;
-
-  const line = document.createElement("div");
-  line.style.position = "absolute";
-  line.style.top = "0";
-  line.style.bottom = "0";
-  line.style.left = "50%";
-  line.style.width = "20px";
-  line.style.background = "black";
-
-  d.appendChild(line);
-}
-
-function addDoubleSC(t){
-  const d = base();
-
-  d.style.background = "white";
-  d.style.color = "black";
-  d.style.position = "relative";
-
-  d.innerText = t + " SC";
-}
-
-function base(){
-  const d=document.createElement("div");
-  d.style.flex="1";
-  d.style.margin="10px";
-  d.style.display="flex";
-
-  d.style.alignItems="center";
-  d.style.justifyContent="flex-start"; // 👈 აქ
-  d.style.paddingLeft = "40px";        // 👈 ესეც
-
-  d.style.fontSize = "clamp(40px, 12vw, 180px)";
-    d.style.fontWeight = "bold";
-    d.style.letterSpacing = "0.1em"; // 🔥 განიერი ასოები
-  document.getElementById("screen").appendChild(d);
-  return d;
-}
-
-function box(){
-  const b=document.createElement("div");
-  b.style.flex="1";
-  b.style.background="gold";
-  b.style.display="flex";
-  b.style.alignItems="center";
-  b.style.justifyContent="center";
-  b.style.color="black";
-  b.style.fontWeight="bold";
-  b.style.fontSize="6vh";
-  return b;
-}
-
-//////////////////////////////////////////////////////////
-// GPS
-//////////////////////////////////////////////////////////
-
-const gpsEl = document.getElementById("gpsStatus");
-const hudText = document.getElementById("hudText");
-const versionText = document.getElementById("versionText");
-versionText.innerText = APP_VERSION;
-
-let lastTime = null;
-
-if(navigator.geolocation){
-  navigator.geolocation.watchPosition(
-    pos => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      const acc = pos.coords.accuracy;
-
-      const now = Date.now();
-      const interval = lastTime ? (now - lastTime) : 0;
-      lastTime = now;
-
-      const z = detectStableZone(lat, lon);
-
-      if (z && z !== displayZone) {
-        displayZone = z;
-        render();
-      }
-
-      let color = acc < 3 ? "lime" : acc < 8 ? "yellow" : "red";
-      hudText.style.color = color;
-
-      hudText.innerText =
-        "GPS | Z:" + (displayZone || "-") +
-        " | " + acc.toFixed(1) + "m" +
-        " | " + interval + "ms" +
-        " | " + lat.toFixed(5) + " / " + lon.toFixed(5);
-
-      gpsEl.innerHTML =
-        "GPS<br>" +
-        (displayZone || "-") + "<br>" +
-        lat.toFixed(5) + "<br>" +
-        lon.toFixed(5);
-
-    },
-    err => {
-      hudText.style.color = "red";
-      hudText.innerText = "GPS ERROR";
-      gpsEl.innerText = "GPS ❌";
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 5000
-    }
-  );
-}
 
 </script>
+
 </body>
 </html>
