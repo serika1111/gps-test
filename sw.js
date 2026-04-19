@@ -25,6 +25,14 @@ self.addEventListener('activate', e => {
 
 // fetch
 self.addEventListener('fetch', e => {
+
+  // ❌ HTML არ დავაკეშოთ საერთოდ
+  if (e.request.headers.get('accept')?.includes('text/html')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
+  // დანარჩენი OK
   e.respondWith(
     fetch(e.request)
       .then(res => {
@@ -36,11 +44,4 @@ self.addEventListener('fetch', e => {
       })
       .catch(() => caches.match(e.request))
   );
-});
-
-// 🔥 ეს უნდა იყოს ცალკე!
-self.addEventListener('message', (event) => {
-  if (event.data?.action === 'skipWaiting') {
-    self.skipWaiting();
-  }
 });
