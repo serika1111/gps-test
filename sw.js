@@ -26,13 +26,18 @@ self.addEventListener('activate', e => {
 // fetch
 self.addEventListener('fetch', e => {
 
-  // ❌ HTML არ დავაკეშოთ საერთოდ
+  const url = new URL(e.request.url);
+
+  if (url.pathname.endsWith('version.js')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
   if (e.request.headers.get('accept')?.includes('text/html')) {
     e.respondWith(fetch(e.request));
     return;
   }
 
-  // დანარჩენი OK
   e.respondWith(
     fetch(e.request)
       .then(res => {
@@ -44,4 +49,11 @@ self.addEventListener('fetch', e => {
       })
       .catch(() => caches.match(e.request))
   );
+});
+
+// 👇 ეს დაამატე ბოლოში
+self.addEventListener('message', (event) => {
+  if (event.data?.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
