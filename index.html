@@ -191,6 +191,30 @@ const zonePoints = {
   FN:{lat:41.57204929518776,lon:44.94632114118916,r:40}
 };
 
+// 🔥 SEQUENTIAL BASE
+let currentMP = null;
+let candidateMP = null;
+let candidateCount = 0;
+
+// 👉 allowed next
+const allowedNext = {
+  ST: ["MP1"],
+
+  MP1: ["MP2"],
+  MP2: ["MP3"],
+  MP3: ["MP4"],
+  MP4: ["MP5"],
+  MP5: ["MP6"],
+  MP6: ["MP7"],
+  MP7: ["MP8","MP9"], // 👈 მნიშვნელოვანი
+  MP8: ["MP9"],
+  MP9: ["MP10"],
+  MP10: ["MP11"],
+  MP11: ["MP12"],
+  MP12: ["MP13"],
+  MP13: ["FN"]
+};
+
 function getDistance(lat1, lon1, lat2, lon2){
   const R=6371000;
   const dLat=(lat2-lat1)*Math.PI/180;
@@ -245,11 +269,11 @@ let displayZone=null;
 const TEST_MODE = true;
 
 const testSequence = [
-  "MP1",
-  "MP2",
-  "MP3",
-  "MP4",
-  "MP5"
+  "MP1","MP1",
+  "MP2","MP2",
+  "MP3","MP3",
+  "MP4","MP4",
+  "MP5","MP5"
 ];
 
 let testIndex = 0;
@@ -274,10 +298,55 @@ if(TEST_MODE){
 
     const z = testSequence[testIndex];
 
-    if (z !== displayZone) {
+// 🔥 INIT (ჯერ არ ვართ დასინქული)
+if(currentMP === null){
+  if(z){
+    if(z === candidateMP){
+      candidateCount++;
+    }else{
+      candidateMP = z;
+      candidateCount = 1;
+    }
+
+    if(candidateCount >= 2){
+      currentMP = z;
       displayZone = z;
       render();
     }
+  }
+}
+
+// 🔥 NORMAL MODE
+else if(z){
+
+  // იგივე ზონა → ignore
+  if(z === currentMP){
+    // nothing
+  }else{
+
+    const allowed = allowedNext[currentMP] || [];
+
+    // არ არის allowed → ignore
+    if(!allowed.includes(z)){
+      // ignore
+    }else{
+
+      if(z === candidateMP){
+        candidateCount++;
+      }else{
+        candidateMP = z;
+        candidateCount = 1;
+      }
+
+      // ✔ დადასტურებული გადასვლა
+      if(candidateCount >= 2){
+        currentMP = z;
+        displayZone = z;
+        render();
+      }
+    }
+  }
+}
 
     testIndex++;
     if(testIndex >= testSequence.length) testIndex = 0;
@@ -501,7 +570,42 @@ if(!TEST_MODE && navigator.geolocation){
 
       const z = detectStableZone(lat, lon);
 
-if (z !== displayZone) {
+// 🔥 INIT
+if(currentMP === null){
+  if(z){
+    if(z === candidateMP){
+      candidateCount++;
+    }else{
+      candidateMP = z;
+      candidateCount = 1;
+    }
+
+    if(candidateCount >= 3){ // 👈 აქ შეგიძლია 2 ან 3
+      currentMP = z;
+      displayZone = z;
+      render();
+    }
+  }
+  return;
+}
+
+// 🔥 NORMAL MODE
+if(!z) return;
+
+if(z === currentMP) return;
+
+const allowed = allowedNext[currentMP] || [];
+if(!allowed.includes(z)) return;
+
+if(z === candidateMP){
+  candidateCount++;
+}else{
+  candidateMP = z;
+  candidateCount = 1;
+}
+
+if(candidateCount >= 3){ // 👈 იგივე აქ
+  currentMP = z;
   displayZone = z;
   render();
 }
