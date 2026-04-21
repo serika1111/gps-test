@@ -172,14 +172,61 @@ function detectZone(lat, lon){
 let currentZone=null,lastZone=null,stableCount=0;
 
 function detectStableZone(lat, lon){
-  const z=detectZone(lat,lon);
-  if(z===lastZone) stableCount++; else stableCount=0;
-  lastZone=z;
-  if(stableCount>=2) currentZone=z;
+  const z = detectZone(lat, lon);
+
+  // 🔥 EXIT: თუ საერთოდ ზონაში არ ხარ
+  if(z === null){
+    currentZone = null;
+    lastZone = null;
+    stableCount = 0;
+    return null;
+  }
+
+  // 🔁 სტაბილურობა
+  if(z === lastZone){
+    stableCount++;
+  }else{
+    stableCount = 0;
+  }
+
+  lastZone = z;
+
+  if(stableCount >= 2){
+    currentZone = z;
+  }
+
   return currentZone;
 }
 
 let displayZone=null;
+
+// 🔥 TEST MODE
+const TEST_MODE = true;
+
+const testSequence = [
+  "MP1", null,
+  "MP2", null,
+  "MP3", null,
+  "MP4", null,
+  "MP5", null
+];
+
+let testIndex = 0;
+
+if(TEST_MODE){
+  setInterval(() => {
+    const z = testSequence[testIndex];
+
+    if (z !== displayZone) {
+      displayZone = z;
+      render();
+    }
+
+    testIndex++;
+    if(testIndex >= testSequence.length) testIndex = 0;
+
+  }, 2000); // ყოველ 2 წამში
+}
 
 //////////////////////////////////////////////////////////
 // RENDER
@@ -383,7 +430,8 @@ versionText.innerText = APP_VERSION;
 
 let lastTime = null;
 
-if(navigator.geolocation){
+if(!TEST_MODE && navigator.geolocation){
+
   navigator.geolocation.watchPosition(
     pos => {
       const lat = pos.coords.latitude;
@@ -396,10 +444,10 @@ if(navigator.geolocation){
 
       const z = detectStableZone(lat, lon);
 
-      if (z && z !== displayZone) {
-        displayZone = z;
-        render();
-      }
+if (z !== displayZone) {
+  displayZone = z;
+  render();
+}
 
       let color = acc < 3 ? "lime" : acc < 8 ? "yellow" : "red";
       hudText.style.color = color;
