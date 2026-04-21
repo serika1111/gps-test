@@ -213,6 +213,7 @@ const allowedNext = {
   MP11: ["MP12"],
   MP12: ["MP13"],
   MP13: ["FN"]
+    FN: ["ST"]
 };
 
 function getDistance(lat1, lon1, lat2, lon2){
@@ -269,11 +270,22 @@ let displayZone=null;
 const TEST_MODE = true;
 
 const testSequence = [
+  "ST","ST",
+
   "MP1","MP1",
   "MP2","MP2",
   "MP3","MP3",
   "MP4","MP4",
-  "MP5","MP5"
+  "MP5","MP5",
+  "MP6","MP6",
+  "MP7","MP7",
+  "MP8","MP8",
+  "MP9","MP9",
+  "MP10","MP10",
+  "MP11","MP11",
+  "MP12","MP12",
+  "MP13","MP13",
+  "FN","FN"
 ];
 
 let testIndex = 0;
