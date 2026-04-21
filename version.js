@@ -1,2 +1,2 @@
 // 🔥 APP VERSION (change only here)
-const APP_VERSION = "driver-v1.39";
+const APP_VERSION = "driver-v1.4";
