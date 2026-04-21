@@ -110,6 +110,9 @@ let finish = false;
 let mode = "GPS";
 
 onValue(ref(db,'zones'), s=>{
+
+  if(TEST_MODE) return;
+
   const data = s.val() || {};
   zones = {};
   for(const k in data){
@@ -118,12 +121,50 @@ onValue(ref(db,'zones'), s=>{
   render();
 });
 
-onValue(ref(db,'allGreen'), s=>{ allGreen = s.val()?.value === true; render(); });
-onValue(ref(db,'fcy'), s=>{ fcy = s.val()?.value === true; render(); });
-onValue(ref(db,'fcy_sc'), s=>{ fcy_sc = s.val()?.value === true; render(); });
-onValue(ref(db,'red'), s=>{ red = s.val()?.value === true; render(); });
-onValue(ref(db,'finish'), s=>{ finish = s.val()?.value === true; render(); });
+onValue(ref(db,'allGreen'), s=>{ 
+
+  if(TEST_MODE) return;
+
+  allGreen = s.val()?.value === true; 
+  render(); 
+});
+
+onValue(ref(db,'fcy'), s=>{ 
+
+  if(TEST_MODE) return;
+
+  fcy = s.val()?.value === true; 
+  render(); 
+});
+
+onValue(ref(db,'fcy_sc'), s=>{ 
+
+  if(TEST_MODE) return;
+
+  fcy_sc = s.val()?.value === true; 
+  render(); 
+});
+
+onValue(ref(db,'red'), s=>{ 
+
+  if(TEST_MODE) return;
+
+  red = s.val()?.value === true; 
+  render(); 
+});
+
+onValue(ref(db,'finish'), s=>{ 
+
+  if(TEST_MODE) return;
+
+  finish = s.val()?.value === true; 
+  render(); 
+});
+
 onValue(ref(db,'mode'), s=>{
+
+  if(TEST_MODE) return;
+
   mode = s.val()?.value || "GPS";
   render();
 });
@@ -204,17 +245,33 @@ let displayZone=null;
 const TEST_MODE = true;
 
 const testSequence = [
-  "MP1", null,
-  "MP2", null,
-  "MP3", null,
-  "MP4", null,
-  "MP5", null
+  "MP1",
+  "MP2",
+  "MP3",
+  "MP4",
+  "MP5"
 ];
 
 let testIndex = 0;
 
 if(TEST_MODE){
+
+  console.log("TEST MODE RUNNING");
+
+  zones = {
+    MP1: "YELLOW",
+    MP2: "YELLOW",
+    MP3: "YELLOW",
+    MP4: "YELLOW",
+    MP5: "YELLOW"
+  };
+
+  displayZone = "MP1";
+
+  render();
+
   setInterval(() => {
+
     const z = testSequence[testIndex];
 
     if (z !== displayZone) {
