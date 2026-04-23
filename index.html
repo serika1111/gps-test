@@ -266,8 +266,9 @@ function detectStableZone(lat, lon){
 
 let displayZone=null;
 
-// 🔥 TEST MODE
-const TEST_MODE = false;
+// 🔥 TEST MODE, true = ტესტი, false = რეალური GPS
+
+const TEST_MODE = false; 
 
 const testSequence = [
   "MP1","MP1",
@@ -646,15 +647,16 @@ if(candidateCount >= 3){ // 👈 იგივე აქ
 
     },
     err => {
-      hudText.style.color = "red";
-      hudText.innerText = "GPS ERROR";
-      gpsEl.innerText = "GPS ❌";
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 5000
-    }
+  console.log("GPS ERROR:", err);
+  hudText.style.color = "red";
+  hudText.innerText = "GPS ERROR";
+  gpsEl.innerText = "GPS ❌";
+},
+{
+  enableHighAccuracy: true,
+  maximumAge: 0,
+  timeout: 5000
+}
   );
 }
 
