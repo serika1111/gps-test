@@ -180,6 +180,28 @@ function detectStableZone(lat, lon){
 }
 
 let displayZone=null;
+let currentMP = null;
+let candidateMP = null;
+let candidateCount = 0;
+
+const allowedNext = {
+  ST: ["MP1"],
+
+  MP1: ["MP2"],
+  MP2: ["MP3"],
+  MP3: ["MP4"],
+  MP4: ["MP5"],
+  MP5: ["MP6"],
+  MP6: ["MP7"],
+  MP7: ["MP8"],
+  MP8: ["MP9"],
+  MP9: ["MP10"],
+  MP10: ["MP11"],
+  MP11: ["MP12"],
+  MP12: ["MP13"],
+  MP13: ["FN"],
+  FN: ["ST"]
+};
 
 //////////////////////////////////////////////////////////
 // RENDER
@@ -396,10 +418,82 @@ if(navigator.geolocation){
 
       const z = detectStableZone(lat, lon);
 
-      if (z && z !== displayZone) {
-        displayZone = z;
-        render();
-      }
+// 🔥 INITIAL LOCK
+if(currentMP === null){
+
+  if(z){
+    if(z === candidateMP){
+      candidateCount++;
+    }else{
+      candidateMP = z;
+      candidateCount = 1;
+    }
+
+    if(candidateCount >= 3){
+      currentMP = z;
+      displayZone = z;
+      render();
+    }
+  }
+
+  return;
+}
+
+// 🔥 NORMAL FLOW
+if(z){
+
+  // იგივე ზონა → ignore
+  if(z === currentMP) return;
+
+  const allowed = allowedNext[currentMP] || [];
+
+// ✔ NORMAL (allowed)
+if(allowed.includes(z)){
+
+  // ✔ იგივე MP → ზრდა
+  if(z === candidateMP){
+    candidateCount++;
+  }
+
+  else{
+
+  // 💣 თუ candidate სუსტი იყო → შევცვალოთ
+  if(candidateCount <= 1){
+    candidateMP = z;
+    candidateCount = 1;
+  }
+
+  // 💣 თუ უკვე პროგრესი იყო → დავაიგნოროთ (noise)
+  else{
+    // არაფერი
+  }
+}
+
+  if(candidateCount >= 3){
+    currentMP = z;
+    displayZone = z;
+    render();
+  }
+
+  return;
+}
+
+// ❗ NOT ALLOWED → RE-LOCK CANDIDATE
+
+  if(z === candidateMP){
+    candidateCount++;
+  }else{
+    candidateMP = z;
+    candidateCount = 1;
+  }
+
+  // 💣 RE-LOCK (strong confirm)
+  if(candidateCount >= 6){
+    currentMP = z;
+    displayZone = z;
+    render();
+  }
+}
 
       let color = acc < 3 ? "lime" : acc < 8 ? "yellow" : "red";
       hudText.style.color = color;
