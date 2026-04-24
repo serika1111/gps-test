@@ -443,13 +443,9 @@ versionText.innerText = APP_VERSION;
 
 let lastTime = null;
 
-console.log("BEFORE GPS");
-
 if(navigator.geolocation){
-console.log("GEO:", navigator.geolocation);
   navigator.geolocation.watchPosition(
     pos => {
-console.log("GPS UPDATE");  // 👈 ესეც დაამატე ტესტისთვის
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
       const acc = pos.coords.accuracy;
@@ -461,81 +457,73 @@ console.log("GPS UPDATE");  // 👈 ესეც დაამატე ტეს
       const z = detectStableZone(lat, lon);
 
 // 🔥 INITIAL LOCK
+// 🔥 INITIAL LOCK
 if(currentMP === null){
 
   if(z){
     if(z === candidateMP){
       candidateCount++;
-    }else{
+    } else {
       candidateMP = z;
       candidateCount = 1;
     }
 
     if(candidateCount >= 3){
-  currentMP = z;
-  triggerEvent(z);
-}
+      currentMP = z;
+      triggerEvent(z);
+    }
   }
 
-  return;
 }
 
 // 🔥 NORMAL FLOW
 if(z){
 
-  // იგივე ზონა → ignore
-  if(z === currentMP) return;
+  if(z === currentMP){
+    // იგივე ზონა → არაფერი
+  } else {
 
-// 💣 ახალი ზონა detected (არ არის იგივე)
+    const allowed = allowedNext[currentMP] || [];
+    const isAllowed = allowed.includes(z);
 
-  const allowed = allowedNext[currentMP] || [];
-const isAllowed = allowed.includes(z);
+    // ✔ NORMAL (allowed)
+    if(isAllowed){
 
-// ✔ NORMAL (allowed)
-if(isAllowed){
+      clearDisplay();
 
-  // ✔ იგივე MP → ზრდა
-  if(z === candidateMP){
-    candidateCount++;
-  }
+      if(z === candidateMP){
+        candidateCount++;
+      } else {
+        if(candidateCount <= 1){
+          candidateMP = z;
+          candidateCount = 1;
+        }
+      }
 
-  else{
+      if(candidateCount >= 3){
+        currentMP = z;
+        triggerEvent(z);
+      }
 
-    // 💣 თუ candidate სუსტი იყო → შევცვალოთ
-    if(candidateCount <= 1){
-      candidateMP = z;
-      candidateCount = 1;
+    } else {
+
+      // ❗ NOT ALLOWED → RE-LOCK
+
+      if(z === candidateMP){
+        candidateCount++;
+      } else {
+        candidateMP = z;
+        candidateCount = 1;
+      }
+
+      if(candidateCount >= 6){
+        currentMP = z;
+        triggerEvent(z);
+      }
+
     }
 
-    // 💣 თუ უკვე პროგრესი იყო → ignore
-    else{
-      // არაფერი
-    }
   }
-
-  // ✔ CONFIRM
-  if(candidateCount >= 3){
-    currentMP = z;
-    triggerEvent(z);
-  }
-
-  return;
-}
-
-// ❗ NOT ALLOWED → RE-LOCK CANDIDATE
-
-  if(z === candidateMP){
-    candidateCount++;
-  }else{
-    candidateMP = z;
-    candidateCount = 1;
-  }
-
-  // 💣 RE-LOCK (strong confirm)
-  if(candidateCount >= 6){
-  currentMP = z;
-  triggerEvent(z);
-}
 }
 
       let color = acc < 3 ? "lime" : acc < 8 ? "yellow" : "red";
@@ -555,12 +543,10 @@ if(isAllowed){
 
     },
     err => {
-  console.log("GPS ERROR:", err.code, err.message);
-
-  hudText.style.color = "red";
-  hudText.innerText = "GPS ERROR";
-  gpsEl.innerText = "GPS ❌";
-},
+      hudText.style.color = "red";
+      hudText.innerText = "GPS ERROR";
+      gpsEl.innerText = "GPS ❌";
+    },
     {
       enableHighAccuracy: true,
       maximumAge: 0,
