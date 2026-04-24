@@ -180,6 +180,41 @@ function detectStableZone(lat, lon){
 }
 
 let displayZone=null;
+
+let displayTimer = null;
+
+function clearDisplay(){
+  if(displayTimer){
+    clearTimeout(displayTimer);
+    displayTimer = null;
+  }
+  displayZone = null;
+  render();
+}
+
+function triggerEvent(zone){
+
+  // 💣 ყოველთვის ჩავაქროთ ძველი
+  clearDisplay();
+
+  // ❗ თუ ამ ზონაში დროშა საერთოდ არ არის → აქ ვრჩებით
+  if(!zones[zone]) return;
+
+  // ⚡ blink
+  setTimeout(() => {
+
+    displayZone = zone;
+    render();
+
+    // ⏱ 5 წამი
+    displayTimer = setTimeout(() => {
+      displayZone = null;
+      render();
+    }, 5000);
+
+  }, 80);
+}
+		
 let currentMP = null;
 let candidateMP = null;
 let candidateCount = 0;
@@ -430,10 +465,9 @@ if(currentMP === null){
     }
 
     if(candidateCount >= 3){
-      currentMP = z;
-      displayZone = z;
-      render();
-    }
+  currentMP = z;
+  triggerEvent(z);
+}
   }
 
   return;
@@ -445,10 +479,16 @@ if(z){
   // იგივე ზონა → ignore
   if(z === currentMP) return;
 
+// 💣 ახალი ზონა detected (არ არის იგივე)
+
   const allowed = allowedNext[currentMP] || [];
+const isAllowed = allowed.includes(z);
 
 // ✔ NORMAL (allowed)
-if(allowed.includes(z)){
+if(isAllowed){
+
+  // 💣 DETECT → კლავს ძველს
+  clearDisplay();
 
   // ✔ იგივე MP → ზრდა
   if(z === candidateMP){
@@ -457,22 +497,22 @@ if(allowed.includes(z)){
 
   else{
 
-  // 💣 თუ candidate სუსტი იყო → შევცვალოთ
-  if(candidateCount <= 1){
-    candidateMP = z;
-    candidateCount = 1;
+    // 💣 თუ candidate სუსტი იყო → შევცვალოთ
+    if(candidateCount <= 1){
+      candidateMP = z;
+      candidateCount = 1;
+    }
+
+    // 💣 თუ უკვე პროგრესი იყო → ignore
+    else{
+      // არაფერი
+    }
   }
 
-  // 💣 თუ უკვე პროგრესი იყო → დავაიგნოროთ (noise)
-  else{
-    // არაფერი
-  }
-}
-
+  // ✔ CONFIRM
   if(candidateCount >= 3){
     currentMP = z;
-    displayZone = z;
-    render();
+    triggerEvent(z);
   }
 
   return;
@@ -489,10 +529,9 @@ if(allowed.includes(z)){
 
   // 💣 RE-LOCK (strong confirm)
   if(candidateCount >= 6){
-    currentMP = z;
-    displayZone = z;
-    render();
-  }
+  currentMP = z;
+  triggerEvent(z);
+}
 }
 
       let color = acc < 3 ? "lime" : acc < 8 ? "yellow" : "red";
