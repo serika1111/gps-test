@@ -181,6 +181,66 @@ function detectStableZone(lat, lon){
 
 let displayZone=null;
 
+let displayTimer = null;
+
+function clearDisplay(){
+  if(displayTimer){
+    clearTimeout(displayTimer);
+    displayTimer = null;
+  }
+
+  if(displayZone !== null){
+    displayZone = null;
+    render();
+  }
+}
+
+function triggerEvent(zone){
+
+  // 💣 ყოველთვის ჩავაქროთ ძველი
+  clearDisplay();
+
+  // ❗ თუ ამ ზონაში დროშა საერთოდ არ არის → აქ ვრჩებით
+  if(!zones[zone]) return;
+
+  // ⚡ blink
+  setTimeout(() => {
+
+    displayZone = zone;
+    render();
+
+    // ⏱ 5 წამი
+    displayTimer = setTimeout(() => {
+      displayZone = null;
+      render();
+    }, 5000);
+
+  }, 80);
+}
+		
+let currentMP = null;
+let candidateMP = null;
+let candidateCount = 0;
+
+const allowedNext = {
+  ST: ["MP1"],
+
+  MP1: ["MP2"],
+  MP2: ["MP3"],
+  MP3: ["MP4"],
+  MP4: ["MP5"],
+  MP5: ["MP6"],
+  MP6: ["MP7"],
+  MP7: ["MP8"],
+  MP8: ["MP9"],
+  MP9: ["MP10"],
+  MP10: ["MP11"],
+  MP11: ["MP12"],
+  MP12: ["MP13"],
+  MP13: ["FN"],
+  FN: ["ST"]
+};
+
 //////////////////////////////////////////////////////////
 // RENDER
 //////////////////////////////////////////////////////////
@@ -396,10 +456,86 @@ if(navigator.geolocation){
 
       const z = detectStableZone(lat, lon);
 
-      if (z && z !== displayZone) {
-        displayZone = z;
-        render();
-      }
+// 🔥 INITIAL LOCK
+if(currentMP === null){
+
+  if(z){
+    if(z === candidateMP){
+      candidateCount++;
+    }else{
+      candidateMP = z;
+      candidateCount = 1;
+    }
+
+    if(candidateCount >= 3){
+  currentMP = z;
+  triggerEvent(z);
+}
+  }
+
+  return;
+}
+
+// 🔥 NORMAL FLOW
+if(z){
+
+  // იგივე ზონა → ignore
+  if(z === currentMP) return;
+
+// 💣 ახალი ზონა detected (არ არის იგივე)
+
+  const allowed = allowedNext[currentMP] || [];
+const isAllowed = allowed.includes(z);
+
+// ✔ NORMAL (allowed)
+if(isAllowed){
+
+  // 💣 DETECT → კლავს ძველს
+  clearDisplay();
+
+  // ✔ იგივე MP → ზრდა
+  if(z === candidateMP){
+    candidateCount++;
+  }
+
+  else{
+
+    // 💣 თუ candidate სუსტი იყო → შევცვალოთ
+    if(candidateCount <= 1){
+      candidateMP = z;
+      candidateCount = 1;
+    }
+
+    // 💣 თუ უკვე პროგრესი იყო → ignore
+    else{
+      // არაფერი
+    }
+  }
+
+  // ✔ CONFIRM
+  if(candidateCount >= 3){
+    currentMP = z;
+    triggerEvent(z);
+  }
+
+  return;
+}
+
+// ❗ NOT ALLOWED → RE-LOCK CANDIDATE
+
+  if(z === candidateMP){
+    candidateCount++;
+  }else{
+    candidateMP = z;
+    candidateCount = 1;
+  }
+
+  // 💣 RE-LOCK (strong confirm)
+  if(candidateCount >= 6){
+  currentMP = z;
+  triggerEvent(z);
+}
+}
 
       let color = acc < 3 ? "lime" : acc < 8 ? "yellow" : "red";
       hudText.style.color = color;
@@ -425,7 +561,7 @@ if(navigator.geolocation){
     {
       enableHighAccuracy: true,
       maximumAge: 0,
-      timeout: 5000
+      timeout: 20000
     }
   );
 }
