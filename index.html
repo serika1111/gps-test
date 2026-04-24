@@ -443,9 +443,13 @@ versionText.innerText = APP_VERSION;
 
 let lastTime = null;
 
+console.log("BEFORE GPS");
+
 if(navigator.geolocation){
+console.log("GEO:", navigator.geolocation);
   navigator.geolocation.watchPosition(
     pos => {
+console.log("GPS UPDATE");  // 👈 ესეც დაამატე ტესტისთვის
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
       const acc = pos.coords.accuracy;
@@ -551,10 +555,12 @@ if(isAllowed){
 
     },
     err => {
-      hudText.style.color = "red";
-      hudText.innerText = "GPS ERROR";
-      gpsEl.innerText = "GPS ❌";
-    },
+  console.log("GPS ERROR:", err.code, err.message);
+
+  hudText.style.color = "red";
+  hudText.innerText = "GPS ERROR";
+  gpsEl.innerText = "GPS ❌";
+},
     {
       enableHighAccuracy: true,
       maximumAge: 0,
